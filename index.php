@@ -29,20 +29,17 @@ class FEED extends Plugin {
 
     function getContent($value) {
 
-//return str_replace ('src="/', 'src="/kkkkkkkkkkkkkkkk/', 'pppppppppppppppppppsrc="/jjjjjjjjjjjjjjjj');
         $values = explode(",", $value);
 
         global $CMS_CONF; // globale Variablen der index.php!
         global $URL_BASE;
         global $specialchars;
         global $CatPage;
-        global $PLUGIN_DIR_REL;
         global $CAT_REQUEST;
         global $language;
-        global $EXT_PAGE;
-        global $EXT_HIDDEN;
-
-        require_once($PLUGIN_DIR_REL . '/FEED/FeedCreator.php'); // Klasse einfuegen 
+        //global $EXT_PAGE;
+        //global $EXT_HIDDEN;
+        require_once(PLUGIN_DIR_REL . 'FEED/FeedCreator.php'); // Klasse einfuegen 
         $feedCreator = new FeedCreator(
                         'moziloCMS ' . $this->name . ' R.' . $this->revision,
                         $specialchars->rebuildSpecialChars($CMS_CONF->get("websitetitle"), false, false),
@@ -71,7 +68,7 @@ class FEED extends Plugin {
             $feed = TRUE;
         }
         if ($feed) {
-            @require_once($PLUGIN_DIR_REL . '/FEED/CacheMan.php'); // Klasse einfuegen 
+            require_once(PLUGIN_DIR_REL . '/FEED/CacheMan.php'); // Klasse einfuegen 
             $cacheAktiv = ($this->settings->get("cache") > 0);
             if ($cacheAktiv) {
                 $cacheMan = new CacheMan();
@@ -80,9 +77,9 @@ class FEED extends Plugin {
             }
             if (!$cacheAktiv || $cacheMan->_startCaching() === FALSE) {
                 // wenn caching noch nicht vorhanden oder veraltet ist 
-                $this->include_pages = array($EXT_PAGE);
+                $this->include_pages = array(EXT_PAGE);
                 if ($this->settings->get("showhiddenpages") == "true")
-                    $this->include_pages = array($EXT_PAGE, $EXT_HIDDEN);
+                    $this->include_pages = array(EXT_PAGE, EXT_HIDDEN);
 
                 $latestchanged = $this->getChangedContent(true, $this->settings->get("showmoziloGB") == "true");
                 krsort($latestchanged);
@@ -93,7 +90,7 @@ class FEED extends Plugin {
                 //add item elements to the feed eg elements inside <item> -Elementshere- </item>
                 $i = 0;
                 foreach ($latestchanged as $key => $cat) {
-                    $feedCreator->addItem(
+					$feedCreator->addItem(
                             $specialchars->rebuildSpecialChars($cat['page'], false, false), $cat['link'], $cat['time'], $cat['author'], $cat['content']
                     );
                     if ($i++ >= $this->settings->get("anzahl"))
@@ -258,25 +255,29 @@ class FEED extends Plugin {
     // - kompletter Link auf diese Inhaltsseite  
     // - formatiertes Datum der letzten Aenderung
     // ------------------------------------------------------------------------------
-    function getChangedContent($readCms, $readGb, $readGallery=true) {
-        global $CMS_CONF, $BASE_DIR_CMS, $BASE_DIR, $GALLERIES_DIR_NAME; // globale Variablen der index.php!
+    function getChangedContent($readCms, $readGb=false, $readGallery=true) {
+        global $CMS_CONF;
+		//, $BASE_DIR_CMS, $BASE_DIR, $GALLERIES_DIR_NAME; // globale Variablen der index.php!
         global $CHARSET;
         global $language;
         global $CatPage;
-        global $PLUGIN_DIR_REL;
+        //global $PLUGIN_DIR_REL;
         global $specialchars;
 
         // Kategorien-Verzeichnis einlesen
         $hiddenCategory = explode(",", rtrim($this->settings->get("hiddenCategory")));
         $categoriesarray = $CatPage->get_CatArray(false, false, $this->include_pages);
+        //$categoriesarray = $CatPage->get_CatArray(true, false, $this->include_pages);
         $latestchanged = array();
         $this->syntax = new Syntax();
+		//echo 'ZZB'.print_r($categoriesarray,true).'ZZB';
 
         if ($readCms) {
             // Alle Kategorien durchsuchen
             foreach ($categoriesarray as $currentcategory) {
                 if (!in_array($currentcategory, $hiddenCategory)) {
-                    $contentarray = $CatPage->get_PageArray($currentcategory, $this->include_pages, true);
+                    //$contentarray = $CatPage->get_PageArray($currentcategory, $this->include_pages, true);
+                    $contentarray = $CatPage->get_PageArray($currentcategory, false, false);
                     // Alle Inhaltsseiten durchsuchen
                     foreach ($contentarray as $currentcontent) {
                         $content = $CatPage->get_PageContent($currentcategory, $currentcontent);
@@ -313,21 +314,16 @@ class FEED extends Plugin {
         }
         if ($readGb && $this->linkGB) {
             //$this->entries = array();
-            $filecontent = file($PLUGIN_DIR_REL . '/moziloGB/data/gb.txt');
+            $filecontent = file(PLUGIN_DIR_REL . '/moziloGB/data/gb.txt');
             foreach ($filecontent as $line) {
                 $lineArray = explode("|", rtrim($line));
                 //mozilo-Syntax, aber keine Plugins
                 $content = $this->syntax->convertContent($lineArray[6], 'Feed', FALSE);
-// aus moziloGB kopiert:		
+				// aus moziloGB kopiert:		
                 // HTML-Tags komplett entfernen
-		//$content = strip_tags($content);
-		/* $content = preg_replace("/<[\/\!]*?[^<>]*
-?>/Usi","", $content); */
-		//$content = htmlentities($content,ENT_COMPAT,$CHARSET);
-		// Zeilenwexxel und Pipe
-		$content = preg_replace("/\[br\]/", " ", $content);
-		$content = preg_replace("/\[pipe\]/", " ", $content);
-// aus moziloGB kopiert:		
+				$content = preg_replace("/\[br\]/", " ", $content);
+				$content = preg_replace("/\[pipe\]/", " ", $content);
+				// aus moziloGB kopiert:		
                 // interne Bildlinks extern verfügbar machen
                 $content = str_replace('src="/', 'src="' . $this->web . '/', $content);
                 $latestchanged[$lineArray[0] . 'moziloGB'] =
@@ -344,7 +340,7 @@ class FEED extends Plugin {
         if ($readGallery && $this->linkGalleries) {
             //print_r($this->linkGalleries);
             //$this->entries = array();
-            require_once ($BASE_DIR_CMS . 'GalleryClass.php');
+            require_once (BASE_DIR_CMS . 'GalleryClass.php');
             $galleryClass = new GalleryClass();
             $galleryClass->initial_Galleries($galleryClass->GalleriesArray, NULL, NULL, TRUE);
             //print_r($galleryClass->GalleriesArray);
@@ -354,7 +350,7 @@ class FEED extends Plugin {
                 if (array_key_exists($galleryName, $this->linkGalleries)) {
                     $galleryTime = array();
                     foreach ($currentgallery as $pictureName => $picture) {
-                        $time = filemtime($BASE_DIR . $GALLERIES_DIR_NAME . '/' . $galleryName . '/' . $pictureName);
+                        $time = filemtime(BASE_DIR . GALLERIES_DIR_NAME . '/' . $galleryName . '/' . $pictureName);
                         $galleryTime[$time . $pictureName] = array(
                             "picture" => $pictureName,
                             "time" => $time,
@@ -395,22 +391,6 @@ class FEED extends Plugin {
                     //print_r($galleryName);
                 }
             }
-            //print_r($latestchanged);
-            /*
-              $filecontent = file($PLUGIN_DIR_REL . '/moziloGB/data/gb.txt');
-              foreach ($filecontent as $line) {
-              $lineArray = explode("|", rtrim($line));
-              $latestchanged[$lineArray[0] . 'moziloGB'] =
-              array(
-              "cat" => $this->settings->get("gbCategory"),
-              "link" => '', //$CatPage->get_hRef($this->settings->get("gbCategory"), $this->settings->get("gbPage")),
-              "page" => $this->settings->get("showmoziloGBTitel"),
-              "time" => $lineArray[0],
-              "author" => $lineArray[3],
-              "content" => $lineArray[6]
-              );
-              }
-             */
         }
         return $latestchanged;
     }

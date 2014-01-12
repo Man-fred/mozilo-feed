@@ -84,20 +84,20 @@ class FeedCreator {
     }
 
     function addItem($title, $link, $time, $author, $content) {
-        if ($this->type == 'ATOM') {
+		if ($this->type == 'ATOM') {
             $this->feedcontent .=
                     '<entry>
    <title>' . $title . '</title>
    <link rel="alternate" type="text/html" href="' . $this->web . $link . '"/>
-   <published>' . date(DATE_ATOM, $time) . '</published>
-   <updated>' . date(DATE_ATOM, $time) . '</updated>
-   <id>' . $time/*$this->web . $link */. '</id>
+   <published>' . date(DATE_ATOM, (int) $time) . '</published>
+   <updated>' . date(DATE_ATOM, (int) $time) . '</updated>
+   <id>' . md5($link). '</id>
    <author>
        <name>' . $author . '</name>
    </author>
    <summary type="html"><![CDATA[ ' . $content . ' ]]></summary>
-   <content type="xhtml" xml:base="http://example.org/">
-       <div xmlns="http://www.w3.org/1999/xhtml">
+   <content>
+       <div>
             ' . $content . '
        </div>
    </content>
